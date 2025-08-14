@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Long-Term Investment Tracker</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --muted: #94a3b8;
+      --text: #e5e7eb;
+      --accent: #38bdf8;
+      --accent2: #22c55e;
+      --warning: #ef4444;
+      --border: #1f2937;
+      --tableRowOdd: #0b1228;
+      --tableRowEven: #0d1530;
+      --focus: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial;
+      background: radial-gradient(1200px 600px at 25% -10%, #1e293b 0%, var(--bg) 40%), var(--bg);
+      color: var(--text);
+      line-height: 1.4;
+    }
+    header {
+      padding: 20px clamp(16px, 4vw, 40px);
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(56,189,248,0.05), rgba(56,189,248,0));
+    }
+    .title { font-weight: 700; font-size: clamp(20px, 2.2vw, 28px); margin: 0 0 6px; }
+    .subtitle { color: var(--muted); margin: 0; font-size: clamp(12px, 1.6vw, 14px); }
+    .tabs {
+      display: flex; gap: 8px; padding: 10px clamp(10px,3.5vw,36px) 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      border-color: rgba(56,189,248,0.6);
+      background: linear-gradient(180deg, rgba(56,189,248,0.18), rgba(56,189,248,0.05));
+    }
+    main { padding: 16px clamp(10px, 3.5vw, 36px) 36px; }
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.00));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: clamp(12px, 2vw, 20px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.02);
+      margin-bottom: 16px;
+    }
+    .controls-grid {
+      display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+    @media (min-width: 720px) { .controls-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+    label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      background: #0b1224;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--text);
+      outline: none;
+    }
+    input:focus { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(96,165,250,0.2); }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    button {
+      background: #0b1224;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+    button.primary { border-color: rgba(56,189,248,0.5); background: linear-gradient(180deg, rgba(56,189,248,0.15), rgba(56,189,248,0.05)); }
+    button.ghost { background: transparent; }
+    button.danger { border-color: rgba(239,68,68,0.5); background: linear-gradient(180deg, rgba(239,68,68,0.18), rgba(239,68,68,0.05)); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .table-wrap {
+      overflow: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 1220px; }
+    thead th {
+      position: sticky; top: 0;
+      backdrop-filter: blur(4px);
+      background: #0b1224;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      text-align: left; padding: 10px 8px; white-space: nowrap;
+      z-index: 2;
+    }
+    tbody td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    tbody tr:nth-child(odd) { background: var(--tableRowOdd); }
+    tbody tr:nth-child(even) { background: var(--tableRowEven); }
+    td.num { text-align: right; }
+    .select-cell { width: 36px; text-align: center; }
+    .sticky-left { position: sticky; left: 0; z-index: 3; }
+    thead .sticky-left { background: #0b1224; }
+    tbody .sticky-left { background: var(--tableRowOdd); }
+    tbody tr:nth-child(even) .sticky-left { background: var(--tableRowEven); }
+    .pill {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 12px; border: 1px solid var(--border); color: var(--muted);
+    }
+    .positive { color: var(--accent2); }
+    .negative { color: var(--warning); }
+    .footer { margin-top: 12px; font-size: 12px; color: var(--muted); }
+    /* Chart page container: fixed height to stabilize sizing */
+    #chartContainer { width: 100%; height: clamp(260px, 50vh, 480px); }
+    #chartContainer canvas { width: 100% !important; height: 100% !important; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 class="title">Long-Term Investment Tracker</h1>
+    <p class="subtitle">Insert once, review later. Two pages: a clean table and a stable, compact chart.</p>
+  </header>
+
+  <div class="tabs">
+    <button id="tabTable" class="tab-btn active">Table</button>
+    <button id="tabChart" class="tab-btn">Chart</button>
+  </div>
+
+  <main>
+    <!-- TABLE PAGE -->
+    <section id="tablePage">
+      <section class="panel">
+        <div class="controls-grid">
+          <div>
+            <label for="startYear">Start year (optional)</label>
+            <input id="startYear" type="number" inputmode="numeric" placeholder="e.g., 2025" />
+          </div>
+          <div>
+            <label for="currency">Currency (ISO code)</label>
+            <input id="currency" type="text" maxlength="6" placeholder="e.g., EUR" />
+          </div>
+          <div>
+            <label for="precision">Decimal precision</label>
+            <input id="precision" type="number" min="0" max="4" value="2" />
+          </div>
+          <div>
+            <label for="nextIndex">Next Year #</label>
+            <input id="nextIndex" type="number" readonly />
+          </div>
+        </div>
+        <div class="controls-grid" style="margin-top:10px;">
+          <div>
+            <label for="formActualYear">Actual Year</label>
+            <input id="formActualYear" type="number" inputmode="numeric" placeholder="auto if Start year set" />
+          </div>
+          <div>
+            <label for="formInvest">Money Invested (This Year)</label>
+            <input id="formInvest" type="text" inputmode="decimal" placeholder="e.g., 5000" />
+          </div>
+          <div>
+            <label for="formEndValue">Actual Money (End of Year)</label>
+            <input id="formEndValue" type="text" inputmode="decimal" placeholder="e.g., 5400" />
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button class="primary" id="insertRow">Insert</button>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="danger" id="deleteSelected" disabled>Delete selected</button>
+          <button class="ghost" id="exportJson">Export JSON</button>
+          <button class="ghost" id="importJson">Import JSON</button>
+        </div>
+        <div class="footer">Rows are read-only after insertion. To correct a mistake, delete the row(s) and insert again.</div>
+      </section>
+
+      <section class="panel">
+        <div class="table-wrap">
+          <table id="dataTable" aria-label="Investment table">
+            <thead>
+              <tr>
+                <th class="select-cell sticky-left"><input id="selectAll" type="checkbox" aria-label="Select all rows"></th>
+                <th class="sticky-left">Year #</th>
+                <th>Actual Year</th>
+                <th class="num">Money Invested (This Year)</th>
+                <th class="num">Sum Invested (Cumulative)</th>
+                <th class="num">Actual Money (End of Year)</th>
+                <th class="num">P/L This Year</th>
+                <th class="num">P/L This Year %</th>
+                <th class="num">Avg P/L % (to date)</th>
+                <th class="num">Total P/L</th>
+                <th class="num">Total P/L %</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <!-- CHART PAGE -->
+    <section id="chartPage" class="hidden">
+      <section class="panel">
+        <div style="display:flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+          <div class="pill">Chart</div>
+          <div class="pill" id="totalsPill">Totals</div>
+        </div>
+        <div id="chartContainer">
+          <canvas id="chart"></canvas>
+        </div>
+        <div class="footer">Lines: cumulative invested vs. end-of-year value. Bars: yearly profit/loss.</div>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script>
+    // ---------- Utilities ----------
+    const $ = (q, c=document) => c.querySelector(q);
+    const $$ = (q, c=document) => Array.from(c.querySelectorAll(q));
+    const LS_KEY = 'investment-tracker-v4';
+
+    function format(n, currency, precision) {
+      if (n === null || n === undefined || Number.isNaN(n)) return '';
+      try {
+        return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency || 'EUR', maximumFractionDigits: precision, minimumFractionDigits: precision }).format(n);
+      } catch {
+        const p = Number.isFinite(precision) ? precision : 2;
+        return Number(n).toFixed(p);
+      }
+    }
+    function pct(n, precision) {
+      if (n === null || n === undefined || Number.isNaN(n)) return '';
+      const p = Number.isFinite(precision) ? precision : 2;
+      return (n * 100).toFixed(p) + '%';
+    }
+    function toNumber(v) {
+      if (v === '' || v === null || v === undefined) return 0;
+      const s = String(v).replace(/[^0-9\.-]/g, '');
+      const n = parseFloat(s);
+      return Number.isNaN(n) ? 0 : n;
+    }
+
+    // ---------- Data Model ----------
+    let state = {
+      rows: [],     // [{id, yearIndex, actualYear, invest, endValue, selected}]
+      startYear: '',
+      currency: 'EUR',
+      precision: 2
+    };
+
+    function defaultRows() { return []; }
+
+    function load() {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) {
+        state.rows = defaultRows();
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        state = Object.assign({ rows: [], startYear: '', currency: 'EUR', precision: 2 }, parsed);
+        if (!Array.isArray(state.rows)) state.rows = [];
+        state.rows.forEach(r => { if (!r.id) r.id = crypto.randomUUID(); if (r.selected === undefined) r.selected = false; });
+        reindexYears();
+      } catch {
+        state.rows = defaultRows();
+      }
+    }
+    function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+    function nextYearIndex() { return state.rows.length; }
+    function reindexYears() {
+      state.rows.sort((a,b) => a.yearIndex - b.yearIndex);
+      state.rows.forEach((r, i) => r.yearIndex = i);
+    }
+
+    // ---------- Calculations ----------
+    function compute(rows) {
+      const sorted = [...rows].sort((a,b) => a.yearIndex - b.yearIndex);
+      let cumInvested = 0;
+      let prevEnd = 0;
+      let sumPct = 0;
+      let cntPct = 0;
+      return sorted.map((r) => {
+        const invest = toNumber(r.invest);
+        const end = toNumber(r.endValue);
+        cumInvested += invest;
+        const plYear = end - prevEnd - invest;
+        const denomYear = (prevEnd + invest);
+        const plYearPct = denomYear !== 0 ? (plYear / denomYear) : 0;
+        if (denomYear !== 0) { sumPct += plYearPct; cntPct += 1; }
+        const avgPLPctToDate = cntPct > 0 ? (sumPct / cntPct) : 0;
+        const totalPL = end - cumInvested;
+        const totalPLPct = cumInvested !== 0 ? (totalPL / cumInvested) : 0;
+        prevEnd = end;
+        return { ...r, cumInvested, plYear, plYearPct, avgPLPctToDate, totalPL, totalPLPct };
+      });
+    }
+
+    // ---------- Rendering: Table ----------
+    const tbody = $('#dataTable tbody');
+    function renderTable() {
+      const rows = compute(state.rows);
+      tbody.innerHTML = '';
+      const precision = Number(state.precision) || 2;
+      const currency = (state.currency || 'EUR').trim().toUpperCase();
+
+      rows.forEach((r) => {
+        const tr = document.createElement('tr');
+        const yearPctClass = r.plYear >= 0 ? 'positive' : 'negative';
+        const totalPctClass = r.totalPL >= 0 ? 'positive' : 'negative';
+
+        tr.innerHTML = `
+          <td class="select-cell sticky-left"><input type="checkbox" data-id="${r.id}" data-field="selected" ${r.selected ? 'checked' : ''}></td>
+          <td class="sticky-left">${r.yearIndex}</td>
+          <td>${r.actualYear ?? ''}</td>
+          <td class="num">${format(toNumber(r.invest), currency, precision)}</td>
+          <td class="num">${format(r.cumInvested, currency, precision)}</td>
+          <td class="num">${format(toNumber(r.endValue), currency, precision)}</td>
+          <td class="num ${yearPctClass}">${format(r.plYear, currency, precision)}</td>
+          <td class="num ${yearPctClass}">${pct(r.plYearPct, precision)}</td>
+          <td class="num">${pct(r.avgPLPctToDate, precision)}</td>
+          <td class="num ${totalPctClass}">${format(r.totalPL, currency, precision)}</td>
+          <td class="num ${totalPctClass}">${pct(r.totalPLPct, precision)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      attachTableHandlers();
+      updateBulkControlsState();
+      save();
+      updateNextIndexField();
+      updateTotalsPill();
+    }
+
+    function attachTableHandlers() {
+      tbody.querySelectorAll('input[data-field="selected"]').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+          const id = e.target.getAttribute('data-id');
+          const row = state.rows.find(r => r.id === id);
+          if (!row) return;
+          row.selected = e.target.checked;
+          updateBulkControlsState();
+          syncSelectAllCheckbox();
+          save();
+        });
+      });
+      $('#selectAll').addEventListener('change', onSelectAll);
+    }
+
+    function onSelectAll(e) {
+      const checked = e.target.checked;
+      state.rows.forEach(r => { r.selected = checked; });
+      renderTable();
+    }
+
+    function updateBulkControlsState() {
+      const anySelected = state.rows.some(r => r.selected);
+      $('#deleteSelected').disabled = !anySelected;
+    }
+    function syncSelectAllCheckbox() {
+      const allSelected = state.rows.length > 0 && state.rows.every(r => r.selected);
+      const noneSelected = state.rows.every(r => !r.selected);
+      const checkbox = $('#selectAll');
+      checkbox.indeterminate = !allSelected && !noneSelected;
+      checkbox.checked = allSelected;
+    }
+    function updateNextIndexField() {
+      $('#nextIndex').value = nextYearIndex();
+    }
+
+    // ---------- Rendering: Chart ----------
+    let chart;
+    function buildChart() {
+      // Ensure the canvas has no leftover inline height/width from previous Chart.js runs
+      const canvas = $('#chart');
+      canvas.style.height = '';
+      canvas.style.width = '';
+      const rows = compute(state.rows);
+      const precision = Number(state.precision) || 2;
+      const currency = (state.currency || 'EUR').trim().toUpperCase();
+      const labels = rows.map(r => (r.actualYear || r.yearIndex));
+      const cumInvested = rows.map(r => r.cumInvested);
+      const endValues = rows.map(r => toNumber(r.endValue));
+      const plYear = rows.map(r => r.plYear);
+
+      const data = { labels, datasets: [
+        { type: 'line', label: 'Cumulative Invested', data: cumInvested, tension: 0.25 },
+        { type: 'line', label: 'End-of-Year Value', data: endValues, tension: 0.25 },
+        { type: 'bar', label: 'P/L This Year', data: plYear }
+      ]};
+      const options = {
+        responsive: true,
+        maintainAspectRatio: false, // use container's fixed height
+        resizeDelay: 100,
+        interaction: { mode: 'index', intersect: false },
+        stacked: false,
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: (v) => format(v, currency, precision) } }
+        },
+        plugins: {
+          tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${format(ctx.parsed.y, currency, precision)}` } },
+          legend: { labels: { usePointStyle: true } }
+        }
+      };
+      const ctx = canvas.getContext('2d');
+      chart = new Chart(ctx, { data, options });
+    }
+    function destroyChartIfAny() {
+      if (chart) {
+        chart.destroy();
+        chart = null;
+      }
+    }
+    function updateTotalsPill() {
+      const rows = compute(state.rows);
+      const precision = Number(state.precision) || 2;
+      const currency = (state.currency || 'EUR').trim().toUpperCase();
+      const last = rows.at(-1) || { cumInvested: 0, endValue: 0, totalPL: 0, totalPLPct: 0 };
+      $('#totalsPill').textContent = `Invested: ${format(last.cumInvested, currency, precision)} · Value: ${format(rows.at(-1)?.endValue || 0, currency, precision)} · P/L: ${format(last.totalPL, currency, precision)} (${pct(last.totalPLPct, precision)})`;
+    }
+
+    // ---------- Controls ----------
+    $('#insertRow').addEventListener('click', () => {
+      const idx = nextYearIndex();
+      const sYear = Number($('#startYear').value);
+      const providedActual = $('#formActualYear').value;
+      const invest = $('#formInvest').value;
+      const endVal = $('#formEndValue').value;
+
+      const actualYear = providedActual !== '' ? Number(providedActual)
+                        : (Number.isFinite(sYear) ? (sYear + idx) : '');
+
+      if (providedActual !== '' && !Number.isFinite(actualYear)) { alert('Actual Year must be a number'); return; }
+
+      const row = {
+        id: crypto.randomUUID(),
+        yearIndex: idx,
+        actualYear: providedActual === '' && !Number.isFinite(sYear) ? '' : actualYear,
+        invest: toNumber(invest),
+        endValue: toNumber(endVal),
+        selected: false
+      };
+      state.rows.push(row);
+      save();
+      $('#formActualYear').value = '';
+      $('#formInvest').value = '';
+      $('#formEndValue').value = '';
+      renderTable();
+    });
+
+    $('#deleteSelected').addEventListener('click', () => {
+      const selected = state.rows.filter(r => r.selected);
+      if (selected.length === 0) return;
+      const msg = selected.length === 1 ? 'Delete 1 selected row? This action cannot be undone.' : `Delete ${selected.length} selected rows? This action cannot be undone.`;
+      if (!confirm(msg)) return;
+      const selectedIds = new Set(selected.map(r => r.id));
+      state.rows = state.rows.filter(r => !selectedIds.has(r.id));
+      reindexYears();
+      renderTable();
+    });
+
+    $('#exportJson').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'investment-tracker.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    $('#importJson').addEventListener('click', async () => {
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = 'application/json';
+      inp.onchange = async () => {
+        const file = inp.files?.[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const obj = JSON.parse(text);
+          if (!obj || !Array.isArray(obj.rows)) throw new Error('Invalid file');
+          state = Object.assign({ rows: [], startYear: '', currency: 'EUR', precision: 2 }, obj);
+          state.rows.forEach(r => { if (!r.id) r.id = crypto.randomUUID(); if (r.selected === undefined) r.selected = false; });
+          reindexYears();
+          $('#startYear').value = state.startYear || '';
+          $('#currency').value = state.currency || 'EUR';
+          $('#precision').value = state.precision ?? 2;
+          renderTable();
+        } catch (err) {
+          alert('Failed to import: ' + err.message);
+        }
+      };
+      inp.click();
+    });
+
+    $('#currency').addEventListener('change', e => { state.currency = e.target.value.trim().toUpperCase(); save(); renderTable(); });
+    $('#precision').addEventListener('change', e => { const p = Number(e.target.value); state.precision = Number.isNaN(p) ? 2 : Math.max(0, Math.min(4, p)); save(); renderTable(); });
+    $('#startYear').addEventListener('change', e => { const s = Number(e.target.value); state.startYear = Number.isFinite(s) ? s : ''; save(); updateNextIndexField(); });
+
+    // ---------- Tabs ----------
+    function showTab(which) {
+      if (which === 'table') {
+        $('#tablePage').classList.remove('hidden');
+        $('#chartPage').classList.add('hidden');
+        $('#tabTable').classList.add('active');
+        $('#tabChart').classList.remove('active');
+        // Destroy chart to prevent growth bugs while hidden
+        destroyChartIfAny();
+      } else {
+        $('#chartPage').classList.remove('hidden');
+        $('#tablePage').classList.add('hidden');
+        $('#tabChart').classList.add('active');
+        $('#tabTable').classList.remove('active');
+        // Rebuild chart fresh inside a fixed-height container
+        destroyChartIfAny();
+        buildChart();
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    $('#tabTable').addEventListener('click', () => showTab('table'));
+    $('#tabChart').addEventListener('click', () => showTab('chart'));
+
+    // ---------- Init ----------
+    load();
+    $('#startYear').value = state.startYear || '';
+    $('#currency').value = state.currency || 'EUR';
+    $('#precision').value = state.precision ?? 2;
+    updateNextIndexField();
+    renderTable();
+  </script>
+</body>
+</html>
